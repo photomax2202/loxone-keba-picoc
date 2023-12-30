@@ -33,7 +33,7 @@ Vc Signal is pushed to API-Connector but Wb2 FB does not process correctly
 #define BUFF_SIZE 512
 #define UDP_PAUSE 100 
 #define DEBUG_OUTPUT false
-#define POWER_TH 4.2 //Power Thereshold Phase switch
+#define POWER_TH 4200 //Power Thereshold Phase switch in W
 #define COOLDOWN 300 //Cooldown Time after PhaseSwitch in s (Keba Manual)
 
 // define global variabels
@@ -52,9 +52,12 @@ float valueTpLast;
 // Report Variabeles
 float reportId;
 float valueUserCurr;
+float pushUserCurr;
+float pushUserCurrLast;
 int valuePhaseSwitch;
 int valuePhaseSwitchLast;
 int valuePhaseSwitchSrc;
+int pushPhaseSwitchSrc;
 int deviceSerial;
 float valueVoltage1;
 float valueVoltage2;
@@ -73,9 +76,11 @@ unsigned int iTimePhaseSwitch;
 
 // init global objects
 STREAM* udpStream = stream_create(STREAM_ADRESS,0,0); // create udp stream
+pushPhaseSwitchSrc = 0;
+pushSetEnergy = 99;	// Initial Value fffor pushing new value
 iTimeReport2 = getcurrenttime();
 iTimeReport3 = getcurrenttime() + 1;
-iTimePhaseSwitch = getcurrenttime() - 300;
+iTimePhaseSwitch = getcurrenttime();
 
 
 void sendBuffer(char *str) {
@@ -198,6 +203,11 @@ void setEnableCharging(int i) {
 	// Set Enable Signal 1/0
 	char enaBuffer[BUFF_SIZE];
 	sprintf(enaBuffer,"ena %d",i);
+	if((i == 0) && (valuePhaseSwitch == 1) && (calcCooldownTime(iTimePhaseSwitch) == 0)) {
+		sendBuffer("x2 0");
+		iTimePhaseSwitch = getcurrenttime();
+		sendBuffer("ena 0");
+	}
 	if(valueCaLast != valueCa)
 	{
 		sendBuffer(enaBuffer);
@@ -213,15 +223,26 @@ Calculating unser Current
 */
 	char currUserBuffer[BUFF_SIZE];
 	if (valueCa == 1) {
-		if (i <= POWER_TH) {
-			valueUserCurr = i/(valueVoltage1*sqrt(3))/sqrt(3);
+		pushUserCurrLast = pushUserCurr;
+		if (i <= POWER_TH && (valueVoltage1+valueVoltage2+valueVoltage3) > 400) {
+			pushUserCurr = i/(valueVoltage1*sqrt(3))/sqrt(3);
+			if (calcCooldownTime(iTimePhaseSwitch) == 0) {
+				sendBuffer("x2 1");
+				iTimePhaseSwitch = getcurrenttime();
+			}
 		} else {
-			valueUserCurr = i/valueVoltage1;
+			pushUserCurr = i/valueVoltage1;
+			if (calcCooldownTime(iTimePhaseSwitch) == 0) {
+				sendBuffer("x2 0");
+				iTimePhaseSwitch = getcurrenttime();
+			}
 		}
-		sprintf(currUserBuffer,"curr %d",(int)valueUserCurr);
-		if (valueTpLast != valueTp) {
-			sendBuffer(currUserBuffer);	
+		pushUserCurr = pushUserCurr*1000;
+		if(pushUserCurrLast != pushUserCurr) {
+			sprintf(currUserBuffer,"curr %d",(int)pushUserCurr);
+			sendBuffer(currUserBuffer);
 		}
+		//printf("push user current: %d",(int)pushUserCurr);
 	}
 	free(currUserBuffer);
 }
@@ -231,7 +252,7 @@ void setSetEnergy(float i) {
 	char energyBuffer[BUFF_SIZE];
 	if(pushSetEnergyLast != pushSetEnergy)
 	{
-		sprintf(energyBuffer,"setenergy %f",i);
+		sprintf(energyBuffer,"setenergy %d",(int)i);
 		sendBuffer(energyBuffer);
 	}
 	free(energyBuffer);
@@ -239,10 +260,13 @@ void setSetEnergy(float i) {
 
 while(1)
 {
+	if(pushPhaseSwitchSrc == 1) {
+		sendBuffer("x2src 4");
+	}
 	getInputValues(1);
 	setEnableCharging(valueCa);
 	setUserCurrent(valueTp);
-	setSetEnergy(valueSetEnergy);
+	setSetEnergy(pushSetEnergy);
 	char szBuffer[BUFF_SIZE];
 	if ((getcurrenttime()- iTimeReport2) > 5)
 	{
@@ -283,8 +307,13 @@ while(1)
 				valueSetEnergy  = f_extractValueFromReport(szBuffer,"\"Setenergy\": ");
 				valueSetEnergy = valueSetEnergy / 10000;
 
-				if (valuePhaseSwitchLast != valuePhaseSwitch){
+				if(valuePhaseSwitchLast != valuePhaseSwitch) {
 					iTimePhaseSwitch = getcurrenttime();
+				}
+				if(valuePhaseSwitchSrc != 4) {
+					pushPhaseSwitchSrc = 1;
+				} else {
+					pushPhaseSwitchSrc = 0;
 				}
 			}
 		}
@@ -298,6 +327,16 @@ while(1)
 
 				valueMr = f_extractValueFromReport(szBuffer,"\"E total\": ");
 				valueMr = valueMr / 10000;
+
+				valueVoltage1 = f_extractValueFromReport(szBuffer,"\"U1\": ");
+				valueVoltage2 = f_extractValueFromReport(szBuffer,"\"U2\": ");
+				valueVoltage3 = f_extractValueFromReport(szBuffer,"\"U3\": ");
+				valueCurrent1 = f_extractValueFromReport(szBuffer,"\"I1\": ");
+				valueCurrent2 = f_extractValueFromReport(szBuffer,"\"I2\": ");
+				valueCurrent3 = f_extractValueFromReport(szBuffer,"\"I3\": ");
+				valueCurrent1 = valueCurrent1/1000;
+				valueCurrent2 = valueCurrent2/1000;
+				valueCurrent3 = valueCurrent3/1000;
 			}
 		}
 	}
