@@ -226,30 +226,34 @@ void setEnableCharging(int i) {
 void setUserCurrent(float i) {
 /*
 Calculating unser Current
-
 */
 	char currUserBuffer[BUFF_SIZE];
 	if (valueCa == 1) {
 		pushUserCurrLast = pushUserCurr;
+		// switch to three phases if i is over POWER_TH
 		if (i <= POWER_TH) {
-			pushUserCurr = i/(valueVoltage1*sqrt(3))/sqrt(3);
 			if (calcCooldownTime(iTimePhaseSwitch) == 0) {
 				sendBuffer("x2 1");
 				iTimePhaseSwitch = getcurrenttime();
 			}
 		} else {
-			pushUserCurr = i/valueVoltage1;
 			if (calcCooldownTime(iTimePhaseSwitch) == 0) {
 				sendBuffer("x2 0");
 				iTimePhaseSwitch = getcurrenttime();
 			}
+		}
+		// choose user current calculation
+		if (valuePhaseSwitch == 1 && (valueVoltage1+valueVoltage2+valueVoltage3) > 600) {
+			pushUserCurr = i/(valueVoltage1*sqrt(3))/sqrt(3);
+		} else {
+			pushUserCurr = i/valueVoltage1;
 		}
 		pushUserCurr = pushUserCurr*1000;
 		if(pushUserCurrLast != pushUserCurr) {
 			sprintf(currUserBuffer,"curr %d",(int)pushUserCurr);
 			sendBuffer(currUserBuffer);
 		}
-		//printf("push user current: %d",(int)pushUserCurr);
+		// printf("push user current: %d",(int)pushUserCurr);
 	}
 	free(currUserBuffer);
 }
