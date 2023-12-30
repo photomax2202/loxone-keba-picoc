@@ -35,6 +35,10 @@ Vc Signal is pushed to API-Connector but Wb2 FB does not process correctly
 #define DEBUG_OUTPUT false
 #define POWER_TH 4200 //Power Thereshold Phase switch in W
 #define COOLDOWN 300 //Cooldown Time after PhaseSwitch in s (Keba Manual)
+#define CONV_POWER 1000000 // Constant for Convert Power mW <> kW
+#define CONV_ENERGY 10000 // Constant for Convert Energy 0.1 mWh <> kWh
+#define CONV_CURRENT 1000 // Constant for Convert Current 1000 mA <> A
+#define CONV_PF 10 // Constant for Convert Power Factor 0..1000 <> 0..100%
 #define MULTI_CONTROL true
 
 // define global variabels
@@ -105,7 +109,7 @@ unsigned int calcCooldownTime(unsigned int timeStamp){
 		differentTime = COOLDOWN;
 	}
 	cooldownTime = COOLDOWN - differentTime;
-		if(DEBUG_OUTPUT)
+	if(DEBUG_OUTPUT)
 	{
 		printf("Cooldown Time: %d",cooldownTime);
 	}
@@ -148,7 +152,7 @@ int i_extractValueFromReport(char *str,char *strfind)
 
 void f_setApiOutput(char *str,float flValue)
 {
-	// Set API-Connector Command to FunctionBlock Input with Integer Parameter
+	// Set API-Connector Command to FunctionBlock Input with Float Parameter
 	char f_apiBuffer[BUFF_SIZE];
 	sprintf(f_apiBuffer,"SET(Wb2;%s;%f)",str,flValue);
 	if(DEBUG_OUTPUT)
@@ -161,7 +165,7 @@ void f_setApiOutput(char *str,float flValue)
 
 void i_setApiOutput(char *str,int iValue)
 {
-	// Set API-Connector Command to FunctionBlock Input with Float Parameter
+	// Set API-Connector Command to FunctionBlock Input with Integer Parameter
 	char i_apiBuffer[BUFF_SIZE];
 	sprintf(i_apiBuffer,"SET(Wb2;%s;%d)",str,iValue);
 	if(DEBUG_OUTPUT)
@@ -194,10 +198,10 @@ void getInputValues(int i) {
 	pushSetEnergyLast = pushSetEnergy;
 	valueCa = (int)getinput(11);
 	valueTp = getinput(12);
-	valueTp = valueTp*1000;
+	valueTp = valueTp*1000; // kW >> W
 	// Read Input Values from ProgrammBlock
 	pushSetEnergy = getinput(0);
-	pushSetEnergy = pushSetEnergy*10000;
+	pushSetEnergy = pushSetEnergy*CONV_ENERGY; // kWh >> 0.1 mWh
 	if(DEBUG_OUTPUT)
 	{
 		printf("Read Input 12: %d",valueCa);
@@ -230,7 +234,7 @@ Calculating unser Current
 	char currUserBuffer[BUFF_SIZE];
 	if (valueCa == 1) {
 		pushUserCurrLast = pushUserCurr;
-		// switch to three phases if i is over POWER_TH
+		// switch to three phases if i is over POWER_TH and Cooldown Time in 0
 		if (i <= POWER_TH) {
 			if (calcCooldownTime(iTimePhaseSwitch) == 0) {
 				sendBuffer("x2 1");
@@ -248,7 +252,7 @@ Calculating unser Current
 		} else {
 			pushUserCurr = i/valueVoltage1;
 		}
-		pushUserCurr = pushUserCurr*1000;
+		pushUserCurr = pushUserCurr*CONV_CURRENT; // A >> mA
 		if(pushUserCurrLast != pushUserCurr) {
 			sprintf(currUserBuffer,"curr %d",(int)pushUserCurr);
 			sendBuffer(currUserBuffer);
@@ -307,7 +311,7 @@ while(1)
 					valueCa = valueCac; // Stop Charging if valueCa != valueCac
 				}
 				valueVc = i_extractValueFromReport(szBuffer,"\"Plug\": ");
-				if (valueVc > 4){
+				if (valueVc > 4){ // if Plug > 4 Vehicle is connected
 					valueVc = 1;
 				} else {
 					valueVc = 0;
@@ -317,12 +321,12 @@ while(1)
 				valuePhaseSwitch  = i_extractValueFromReport(szBuffer,"\"X2 phaseSwitch\": ");
 				valuePhaseSwitchSrc  = i_extractValueFromReport(szBuffer,"\"X2 phaseSwitch source\": ");
 				valueSetEnergy  = f_extractValueFromReport(szBuffer,"\"Setenergy\": ");
-				valueSetEnergy = valueSetEnergy / 10000;
+				valueSetEnergy = valueSetEnergy / CONV_ENERGY; // kWh << 0.1 Wh
 
 				if(valuePhaseSwitchLast != valuePhaseSwitch) {
 					iTimePhaseSwitch = getcurrenttime();
 				}
-				if(valuePhaseSwitchSrc != 4) {
+				if(valuePhaseSwitchSrc != 4) { // Switch Source if its not UDP
 					pushPhaseSwitchSrc = 1;
 				} else {
 					pushPhaseSwitchSrc = 0;
@@ -334,10 +338,10 @@ while(1)
 			if (deviceSerial == SERIAL_NO)
 			{
 				valueCp = f_extractValueFromReport(szBuffer,"\"P\": ");
-				valueCp = valueCp / 1000000;
+				valueCp = valueCp / CONV_POWER; // mW >> kW
 
 				valueMr = f_extractValueFromReport(szBuffer,"\"E total\": ");
-				valueMr = valueMr / 10000;
+				valueMr = valueMr / CONV_ENERGY; // 0.1 Wh >> kWh 
 
 				valueVoltage1 = f_extractValueFromReport(szBuffer,"\"U1\": ");
 				valueVoltage2 = f_extractValueFromReport(szBuffer,"\"U2\": ");
@@ -345,9 +349,9 @@ while(1)
 				valueCurrent1 = f_extractValueFromReport(szBuffer,"\"I1\": ");
 				valueCurrent2 = f_extractValueFromReport(szBuffer,"\"I2\": ");
 				valueCurrent3 = f_extractValueFromReport(szBuffer,"\"I3\": ");
-				valueCurrent1 = valueCurrent1/1000;
-				valueCurrent2 = valueCurrent2/1000;
-				valueCurrent3 = valueCurrent3/1000;
+				valueCurrent1 = valueCurrent1/CONV_CURRENT;
+				valueCurrent2 = valueCurrent2/CONV_CURRENT;
+				valueCurrent3 = valueCurrent3/CONV_CURRENT;
 			}
 		}
 	}
