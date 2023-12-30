@@ -35,6 +35,7 @@ Vc Signal is pushed to API-Connector but Wb2 FB does not process correctly
 #define DEBUG_OUTPUT false
 #define POWER_TH 4200 //Power Thereshold Phase switch in W
 #define COOLDOWN 300 //Cooldown Time after PhaseSwitch in s (Keba Manual)
+#define MULTI_CONTROL true
 
 // define global variabels
 int nCnt;
@@ -51,13 +52,6 @@ int valueCaLast;
 float valueTpLast;
 // Report Variabeles
 float reportId;
-float valueUserCurr;
-float pushUserCurr;
-float pushUserCurrLast;
-int valuePhaseSwitch;
-int valuePhaseSwitchLast;
-int valuePhaseSwitchSrc;
-int pushPhaseSwitchSrc;
 int deviceSerial;
 float valueVoltage1;
 float valueVoltage2;
@@ -65,6 +59,15 @@ float valueVoltage3;
 float valueCurrent1;
 float valueCurrent2;
 float valueCurrent3;
+// Variabeles phaseSwitch
+int valuePhaseSwitch;
+int valuePhaseSwitchLast;
+int valuePhaseSwitchSrc;
+int pushPhaseSwitchSrc;
+// Variabeles userCurrent
+float pushUserCurr;
+float pushUserCurrLast;
+float valueUserCurr;
 // Variabeles setEnergy
 float pushSetEnergy;
 float pushSetEnergyLast;
@@ -77,7 +80,7 @@ unsigned int iTimePhaseSwitch;
 // init global objects
 STREAM* udpStream = stream_create(STREAM_ADRESS,0,0); // create udp stream
 pushPhaseSwitchSrc = 0;
-pushSetEnergy = 99;	// Initial Value fffor pushing new value
+pushSetEnergy = 99;	// Initial Value for pushing new value
 iTimeReport2 = getcurrenttime();
 iTimeReport3 = getcurrenttime() + 1;
 iTimePhaseSwitch = getcurrenttime();
@@ -102,6 +105,10 @@ unsigned int calcCooldownTime(unsigned int timeStamp){
 		differentTime = COOLDOWN;
 	}
 	cooldownTime = COOLDOWN - differentTime;
+		if(DEBUG_OUTPUT)
+	{
+		printf("Cooldown Time: %d",cooldownTime);
+	}
 	return cooldownTime;
 }
 
@@ -206,7 +213,7 @@ void setEnableCharging(int i) {
 	if((i == 0) && (valuePhaseSwitch == 1) && (calcCooldownTime(iTimePhaseSwitch) == 0)) {
 		sendBuffer("x2 0");
 		iTimePhaseSwitch = getcurrenttime();
-		sendBuffer("ena 0");
+		sendBuffer(enaBuffer);
 	}
 	if(valueCaLast != valueCa)
 	{
@@ -224,7 +231,7 @@ Calculating unser Current
 	char currUserBuffer[BUFF_SIZE];
 	if (valueCa == 1) {
 		pushUserCurrLast = pushUserCurr;
-		if (i <= POWER_TH && (valueVoltage1+valueVoltage2+valueVoltage3) > 400) {
+		if (i <= POWER_TH) {
 			pushUserCurr = i/(valueVoltage1*sqrt(3))/sqrt(3);
 			if (calcCooldownTime(iTimePhaseSwitch) == 0) {
 				sendBuffer("x2 1");
@@ -286,14 +293,15 @@ while(1)
 			printf("Buffer received: \n%s",szBuffer);	
 		}
 		reportId = i_extractValueFromReport(szBuffer,"\"ID\": \"");
-		//printf("Received Report%f",reportId);
 		if(reportId == 2)
 		{
-			//setoutputtext(1,szBuffer);
 			deviceSerial = i_extractValueFromReport(szBuffer,"\"Serial\": \"");
 			if (deviceSerial == SERIAL_NO)
 			{
 				valueCac = i_extractValueFromReport(szBuffer,"\"Enable sys\": ");
+				if((valueCac != valueCa) && (!MULTI_CONTROL)) {
+					valueCa = valueCac; // Stop Charging if valueCa != valueCac
+				}
 				valueVc = i_extractValueFromReport(szBuffer,"\"Plug\": ");
 				if (valueVc > 4){
 					valueVc = 1;
@@ -318,7 +326,6 @@ while(1)
 			}
 		}
 		if(reportId == 3){
-			//setoutputtext(2,szBuffer);
 			deviceSerial = i_extractValueFromReport(szBuffer,"\"Serial\": \"");
 			if (deviceSerial == SERIAL_NO)
 			{
