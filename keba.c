@@ -155,18 +155,51 @@ int i_extractValueFromReport(char *str,char *strfind)
 	return (int)f_extractValueFromReport(str,strfind);
 }
 
+int new_length(char *str) {
+int i;
+int count = 0;
+for(i = 0; str[i] != '\0'; i++) {
+count++;
+}
+return count;
+}
+
 void flushApiOutput()
 {
 	char strOutputText[BUFF_SIZE];
-	strcat(strOutputText,i_setApiOutput("Cac",valueCac));
-	strcat(strOutputText,"&");
-	strcat(strOutputText,i_setApiOutput("Vc",valueVc));
-	strcat(strOutputText,"&");
-	strcat(strOutputText,f_setApiOutput("Cp",valueCp));
-	strcat(strOutputText,"&");
-	strcat(strOutputText,f_setApiOutput("Mr",valueMr));
+	char strOutputBuffer[BUFF_SIZE];
 	
-	concatenateStrings(arrayOutput, 4, strOutputText);
+	// Value Cac
+	i_setApiOutput("Cac",valueCac,strOutputText);
+	/*
+	strOutputBuffer = i_setApiOutput("Cac",valueCac);
+	realloc(strOutputBuffer,new_length(strOutputBuffer));
+	strcat(strOutputText,strOutputBuffer);
+	realloc(strOutputBuffer,BUFF_SIZE);
+	// Connector
+	strcat(strOutputText,"&");
+	// Value Vc
+	strOutputBuffer = i_setApiOutput("Vc",valueVc);
+	realloc(strOutputBuffer,new_length(strOutputBuffer));
+	strcat(strOutputText,strOutputBuffer);
+	realloc(strOutputBuffer,BUFF_SIZE);
+	// Connector
+	strcat(strOutputText,"&");
+	// Value Cp
+	strOutputBuffer = f_setApiOutput("Cp",valueCp);
+	realloc(strOutputBuffer,new_length(strOutputBuffer));
+	strcat(strOutputText,strOutputBuffer);
+	realloc(strOutputBuffer,BUFF_SIZE);
+	// Connector
+	strcat(strOutputText,"&");
+	// Value Mr
+	strOutputBuffer = f_setApiOutput("Mr",valueMr);
+	realloc(strOutputBuffer,new_length(strOutputBuffer));
+	strcat(strOutputText,strOutputBuffer);
+	realloc(strOutputBuffer,BUFF_SIZE);
+	*/
+	
+	// concatenateStrings(arrayOutput, 4, strOutputText);
 	// Print the concatenated string
     // for (int i = 0; result[i] != '\0'; i++) {
         // putchar(result[i]);
@@ -180,12 +213,13 @@ void flushApiOutput()
 	// char *arrayOutput[4] = {
 // };
 	free(strOutputText);
+	free(strOutputBuffer);
 }
 
-char f_setApiOutput(char *str,float flValue)
+void f_setApiOutput(char *str,float flValue, char *Out)
 {
 	// Set API-Connector Command to FunctionBlock Input with Float Parameter
-	char f_apiBuffer[BUFF_SIZE];
+	static char f_apiBuffer[BUFF_SIZE];
 	sprintf(f_apiBuffer,"SET(Wb2;%s;%f)",str,flValue);
 	if(DEBUG_OUTPUT)
 	{
@@ -193,14 +227,14 @@ char f_setApiOutput(char *str,float flValue)
 	}
 	// setoutputtext(0,f_apiBuffer);
 	// addString(arrayOutput,index,f_apiBuffer);
-	return f_apiBuffer;
-	free(f_apiBuffer);
+	// free(f_apiBuffer);
+	Out = f_apiBuffer;
 }
 
-char i_setApiOutput(char *str,int iValue)
+void i_setApiOutput(char *str,int iValue, char *Out)
 {
 	// Set API-Connector Command to FunctionBlock Input with Integer Parameter
-	char i_apiBuffer[BUFF_SIZE];
+	static char i_apiBuffer[BUFF_SIZE];
 	sprintf(i_apiBuffer,"SET(Wb2;%s;%d)",str,iValue);
 	if(DEBUG_OUTPUT)
 	{
@@ -208,27 +242,27 @@ char i_setApiOutput(char *str,int iValue)
 	}
 	// setoutputtext(0,i_apiBuffer);
 	// addString(arrayOutput,index,i_apiBuffer);
-	return i_apiBuffer;
-	free(i_apiBuffer);
+	// free(i_apiBuffer);
+	Out = i_apiBuffer;
 }
 
-char b_setApiOutput(char *str,int iValue)
+void b_setApiOutput(char *str,int iValue, char *Out)
 {
 	// Set API-Connector Command to FunctionBlock Input with Integer Parameter
-	char i_apiBuffer[BUFF_SIZE];
+	static char b_apiBuffer[BUFF_SIZE];
 	if (iValue == 0)
 		{
-			sprintf(i_apiBuffer,"SET(Wb2;%s;Aus)",str);
+			sprintf(b_apiBuffer,"SET(Wb2;%s;Aus)",str);
 		} else {
-			sprintf(i_apiBuffer,"SET(Wb2;%s;Aus)",str);
+			sprintf(b_apiBuffer,"SET(Wb2;%s;Aus)",str);
 		}
 	if(DEBUG_OUTPUT)
 	{
-		printf("API-Output Command: %s",i_apiBuffer);
+		printf("API-Output Command: %s",b_apiBuffer);
 	}
-	// setoutputtext(0,i_apiBuffer);
-	return b_apiBuffer;
-	free(i_apiBuffer);
+	// setoutputtext(0,b_apiBuffer);
+	// free(b_apiBuffer);
+	Out = b_apiBuffer;
 }
 
 void getApiOutput(char *strOutput)
