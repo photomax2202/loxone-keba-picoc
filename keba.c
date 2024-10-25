@@ -155,7 +155,34 @@ int i_extractValueFromReport(char *str,char *strfind)
 	return (int)f_extractValueFromReport(str,strfind);
 }
 
-void f_setApiOutput(char *str,float flValue)
+void flushApiOutput()
+{
+	char strOutputText[BUFF_SIZE];
+	strcat(strOutputText,i_setApiOutput("Cac",valueCac));
+	strcat(strOutputText,"&");
+	strcat(strOutputText,i_setApiOutput("Vc",valueVc));
+	strcat(strOutputText,"&");
+	strcat(strOutputText,f_setApiOutput("Cp",valueCp));
+	strcat(strOutputText,"&");
+	strcat(strOutputText,f_setApiOutput("Mr",valueMr));
+	
+	concatenateStrings(arrayOutput, 4, strOutputText);
+	// Print the concatenated string
+    // for (int i = 0; result[i] != '\0'; i++) {
+        // putchar(result[i]);
+    
+	setoutputtext(0,strOutputText);
+	// addString(arrayOutput,0,"                                                                                             ");
+	// addString(arrayOutput,1,"                                                                                             ");
+	// addString(arrayOutput,2,"                                                                                             ");
+	// addString(arrayOutput,3,"                                                                                             ");
+	// free(arrayOutput);
+	// char *arrayOutput[4] = {
+// };
+	free(strOutputText);
+}
+
+char f_setApiOutput(char *str,float flValue)
 {
 	// Set API-Connector Command to FunctionBlock Input with Float Parameter
 	char f_apiBuffer[BUFF_SIZE];
@@ -164,11 +191,13 @@ void f_setApiOutput(char *str,float flValue)
 	{
 		printf("API-Output Command: %s",f_apiBuffer);
 	}
-	setoutputtext(0,f_apiBuffer);
+	// setoutputtext(0,f_apiBuffer);
+	// addString(arrayOutput,index,f_apiBuffer);
+	return f_apiBuffer;
 	free(f_apiBuffer);
 }
 
-void i_setApiOutput(char *str,int iValue)
+char i_setApiOutput(char *str,int iValue)
 {
 	// Set API-Connector Command to FunctionBlock Input with Integer Parameter
 	char i_apiBuffer[BUFF_SIZE];
@@ -177,11 +206,13 @@ void i_setApiOutput(char *str,int iValue)
 	{
 		printf("API-Output Command: %s",i_apiBuffer);
 	}
-	setoutputtext(0,i_apiBuffer);
+	// setoutputtext(0,i_apiBuffer);
+	// addString(arrayOutput,index,i_apiBuffer);
+	return i_apiBuffer;
 	free(i_apiBuffer);
 }
 
-void b_setApiOutput(char *str,int iValue)
+char b_setApiOutput(char *str,int iValue)
 {
 	// Set API-Connector Command to FunctionBlock Input with Integer Parameter
 	char i_apiBuffer[BUFF_SIZE];
@@ -195,7 +226,8 @@ void b_setApiOutput(char *str,int iValue)
 	{
 		printf("API-Output Command: %s",i_apiBuffer);
 	}
-	setoutputtext(0,i_apiBuffer);
+	// setoutputtext(0,i_apiBuffer);
+	return b_apiBuffer;
 	free(i_apiBuffer);
 }
 
@@ -305,7 +337,7 @@ while(COM_ACTIVE)
 	if(pushPhaseSwitchSrc == 1) {
 		sendBuffer("x2src 4"); 
 	}
-	getApiOutput("Mr");
+	// getApiOutput("Mr");
 	getInputValues(1);
 	setEnableCharging(valueCa);
 	setUserCurrent(valueTp);
@@ -384,10 +416,11 @@ while(COM_ACTIVE)
 		}
 	}
 	// Write API-Outputs
-	i_setApiOutput("Cac",valueCac);
-	i_setApiOutput("Vc",valueVc);
-	f_setApiOutput("Cp",valueCp);
-	f_setApiOutput("Mr",valueMr);
+	// i_setApiOutput("Cac",valueCac,0);
+	// i_setApiOutput("Vc",valueVc,1);
+	// f_setApiOutput("Cp",valueCp,2);
+	// f_setApiOutput("Mr",valueMr,3);
+	flushApiOutput();
 	// Write OutputValues
 	setoutput(0,valueSetEnergy); // O1	- SetEnergy Value in kWh
 	setoutput(1,valuePhaseSwitch); // O2	- PhaseSwitch State
