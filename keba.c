@@ -28,8 +28,10 @@ Vc Signal is pushed to API-Connector but Wb2 FB does not process correctly
 */
 // server-address und port bitte anpassen
 // define Constants
-#define SERIAL_NO 20420166
-#define STREAM_ADRESS "/dev/udp/192.168.98.29/7090"
+#define SERIAL_NO 21464391
+#define STREAM_ADRESS "/dev/udp/192.168.98.28/7090"
+// #define SERIAL_NO 20420166
+// #define STREAM_ADRESS "/dev/udp/192.168.98.29/7090"
 #define BUFF_SIZE 512
 #define UDP_PAUSE 100 
 #define DEBUG_OUTPUT false
@@ -39,7 +41,9 @@ Vc Signal is pushed to API-Connector but Wb2 FB does not process correctly
 #define CONV_ENERGY 10000 // Constant for Convert Energy 0.1 mWh <> kWh
 #define CONV_CURRENT 1000 // Constant for Convert Current 1000 mA <> A
 #define CONV_PF 10 // Constant for Convert Power Factor 0..1000 <> 0..100%
-#define MULTI_CONTROL true
+#define MULTI_CONTROL true // Wallbox can be Controlled by second source
+// #define COM_ACTIVE false // Programm active or not
+#define COM_ACTIVE true // Programm active or not
 
 // define global variabels
 int nCnt;
@@ -83,6 +87,7 @@ unsigned int iTimePhaseSwitch;
 
 // init global objects
 STREAM* udpStream = stream_create(STREAM_ADRESS,0,0); // create udp stream
+valueCa = 0;
 pushPhaseSwitchSrc = 0;
 pushSetEnergy = 99;	// Initial Value for pushing new value
 iTimeReport2 = getcurrenttime();
@@ -176,6 +181,24 @@ void i_setApiOutput(char *str,int iValue)
 	free(i_apiBuffer);
 }
 
+void b_setApiOutput(char *str,int iValue)
+{
+	// Set API-Connector Command to FunctionBlock Input with Integer Parameter
+	char i_apiBuffer[BUFF_SIZE];
+	if (iValue == 0)
+		{
+			sprintf(i_apiBuffer,"SET(Wb2;%s;Aus)",str);
+		} else {
+			sprintf(i_apiBuffer,"SET(Wb2;%s;Aus)",str);
+		}
+	if(DEBUG_OUTPUT)
+	{
+		printf("API-Output Command: %s",i_apiBuffer);
+	}
+	setoutputtext(0,i_apiBuffer);
+	free(i_apiBuffer);
+}
+
 void getApiOutput(char *strOutput)
 {
 	// Get Value from FunctionBlock Output from API-Connector
@@ -204,9 +227,9 @@ void getInputValues(int i) {
 	pushSetEnergy = pushSetEnergy*CONV_ENERGY; // kWh >> 0.1 mWh
 	if(DEBUG_OUTPUT)
 	{
+		printf("Read Input 1: %f",pushSetEnergy);
 		printf("Read Input 12: %d",valueCa);
 		printf("Read Input 13: %f",valueTp);
-		printf("Read Input 1: %f",pushSetEnergy);
 	}
 }
 
@@ -273,11 +296,16 @@ void setSetEnergy(float i) {
 	free(energyBuffer);
 }
 
-while(1)
+void RemarkForMainLoop() {
+}
+
+while(COM_ACTIVE)
 {
+	// Set PhaseSwitch-Source to UDP if is not present
 	if(pushPhaseSwitchSrc == 1) {
-		sendBuffer("x2src 4");
+		sendBuffer("x2src 4"); 
 	}
+	getApiOutput("Mr");
 	getInputValues(1);
 	setEnableCharging(valueCa);
 	setUserCurrent(valueTp);
