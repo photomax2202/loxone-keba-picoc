@@ -13,8 +13,7 @@ See Compiler Option Switches for your own Configuration.
 - O5 Coolout Time constant maximum
 
 ## Input
-- Receiving Data directly from API-Connecter actually not working.
-
+Receiving Data directly from API-Connecter actually not working.
 - T1 Text input reserved for API-Connector
 - I1 SetEnergy limits the charging for kWh 
 - I12 receives "ChargingAllowed" Signal from Wb1 FunctionBlock.
