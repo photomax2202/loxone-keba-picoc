@@ -20,12 +20,12 @@ Receiving Data directly from API-Connecter actually not working.
 - I13 receives "TargetChargingPower" Signal from Wb1 FunctionBlock.
   Change connection to API Connector if Possible
 
-##Features
+## Features
 - Read Values from Keba P30 over UDP (Meter Value, Current Charging Power, Vehicle Connected [calculated by logic], Charging active [calculated by logic])
 - Enable charging by input 
 - Phaseswitch triggered by target power value
 - SetEnergy-Controlling by input
 
-##Future Features (maybe)
+## Future Features (maybe)
 - Display text line value on Wallbox
 - Read RFID-Tagy from Wallbox
