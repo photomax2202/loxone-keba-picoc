@@ -324,12 +324,14 @@ while(COM_ACTIVE)
 			deviceSerial = i_extractValueFromReport(szBuffer,"\"Serial\": \"");
 			if (deviceSerial == SERIAL_NO)
 			{
+				//calculating Charging active signal
 				valueCac = i_extractValueFromReport(szBuffer,"\"Enable sys\": ");
 				if((valueCac != valueCa) && (!MULTI_CONTROL)) {
 					valueCa = valueCac; // Stop Charging if valueCa != valueCac
 				}
+				//calculating Vehicle connected signal
 				valueVc = i_extractValueFromReport(szBuffer,"\"Plug\": ");
-				if (valueVc > 4){ // if Plug > 4 Vehicle is connected
+				if (valueVc > 4){ // if Plug State > 4 Vehicle is connected
 					valueVc = 1;
 				} else {
 					valueVc = 0;
