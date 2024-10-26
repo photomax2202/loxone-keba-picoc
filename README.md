@@ -10,7 +10,7 @@ See Compiler Option Switches for your own Configuration.
 - O2 PhaseSwitch State
 - O3 PhaseSwitch Source
 - O4 Cooldown Time to next possible switch
-- O5 Coolout Time constant maximum
+- O5 Cooldown Time constant maximum
 
 ## Input
 Receiving Data directly from API-Connecter actually not working.
