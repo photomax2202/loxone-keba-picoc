@@ -1,5 +1,7 @@
 /*
 Integration Keba P30 Wallbox über UDP Kommunikation
+Senden der API Output Signale als kombinierter String
+
 Signal Source > get value from UDP-Report > send to API-Connector
 Vc	- report 2 > Plug >= 5
 Cp	- report 3 > P
@@ -7,24 +9,29 @@ Mr	- report 3 > E total
 Cac	- report 2 > Enable sys
 
 Input Value from Wb2 FB I/O Connector
+I1	- SetEnergy in kWh
 I12	- Enable Charging
 I13	- Target Power in kW
-Using API-Connector if possible
+Using API-Connector if possible - GETOUTPUT Function not implemented in Loxone API
 T1	- Reserved for API-Input
 
-I1	- SetEnergy in kWh
-
-O1	- SetEnergy Value in kWh
-O2	- PhaseSwitch State
-O3	- PhaseSwitch Source
-O4	- Cooldown Time to next switch
+Output Values
+Txt1	- Output for Wb2 API-Connector
+O1		- SetEnergy Value in kWh
+O2		- PhaseSwitch State
+O3		- PhaseSwitch Source
+O4		- Cooldown Time to next switch
+O5		- Cooldown Time Constants
 
 Function:
-Polling "report 2" & "report 3" every 5s with 1s offset between reports.
+	Polling "report 2" & "report 3" every 5s with 1s offset between reports.
+	Setup with UDP_POLL
 
 
 Knowing Issues:
-Vc Signal is pushed to API-Connector but Wb2 FB does not process correctly
+-	Vc Signal is pushed to API-Connector but Wb2 FB does not process correctly
+	Walkarround:
+	Connect Wb2 Inputs to unused Merker-Objects
 */
 // server-address und port bitte anpassen
 // define Constants
@@ -33,17 +40,19 @@ Vc Signal is pushed to API-Connector but Wb2 FB does not process correctly
 // #define SERIAL_NO 20420166
 // #define STREAM_ADRESS "/dev/udp/192.168.98.29/7090"
 #define BUFF_SIZE 512
-#define UDP_PAUSE 100 
-#define DEBUG_OUTPUT false
-#define POWER_TH 4200 //Power Thereshold Phase switch in W
+#define UDP_PAUSE 100 //Sleep time between cycles
+#define POWER_TH_ON 4200 //Power Thereshold Phase switch ON in W
+#define POWER_TH_OFF 4100 //Power Thereshold Phase switch OFF in W
 #define COOLDOWN 300 //Cooldown Time after PhaseSwitch in s (Keba Manual)
+#define UDP_POLL 5 //Time for polling reports
 #define CONV_POWER 1000000 // Constant for Convert Power mW <> kW
 #define CONV_ENERGY 10000 // Constant for Convert Energy 0.1 mWh <> kWh
 #define CONV_CURRENT 1000 // Constant for Convert Current 1000 mA <> A
 #define CONV_PF 10 // Constant for Convert Power Factor 0..1000 <> 0..100%
+#define DEBUG_OUTPUT false
 #define MULTI_CONTROL true // Wallbox can be Controlled by second source
-// #define COM_ACTIVE false // Programm active or not
-#define COM_ACTIVE true // Programm active or not
+// #define COM_ACTIVE false // Programm not active
+#define COM_ACTIVE true // Programm active 
 
 // define global variabels
 int nCnt;
@@ -91,7 +100,7 @@ valueCa = 0;
 pushPhaseSwitchSrc = 0;
 pushSetEnergy = 99;	// Initial Value for pushing new value
 iTimeReport2 = getcurrenttime();
-iTimeReport3 = getcurrenttime() + 1;
+iTimeReport3 = getcurrenttime()+1;
 iTimePhaseSwitch = getcurrenttime();
 
 
@@ -155,114 +164,17 @@ int i_extractValueFromReport(char *str,char *strfind)
 	return (int)f_extractValueFromReport(str,strfind);
 }
 
-int new_length(char *str) {
-int i;
-int count = 0;
-for(i = 0; str[i] != '\0'; i++) {
-count++;
-}
-return count;
-}
-
-void flushApiOutput()
+void flushApiOutput(int AValueCac, int AValueVc, float AValueCp, float AValueMr)
 {
 	char strOutputText[BUFF_SIZE];
-	char strOutputBuffer[BUFF_SIZE];
 	
-	// Value Cac
-	i_setApiOutput("Cac",valueCac,strOutputText);
-	/*
-	strOutputBuffer = i_setApiOutput("Cac",valueCac);
-	realloc(strOutputBuffer,new_length(strOutputBuffer));
-	strcat(strOutputText,strOutputBuffer);
-	realloc(strOutputBuffer,BUFF_SIZE);
-	// Connector
-	strcat(strOutputText,"&");
-	// Value Vc
-	strOutputBuffer = i_setApiOutput("Vc",valueVc);
-	realloc(strOutputBuffer,new_length(strOutputBuffer));
-	strcat(strOutputText,strOutputBuffer);
-	realloc(strOutputBuffer,BUFF_SIZE);
-	// Connector
-	strcat(strOutputText,"&");
-	// Value Cp
-	strOutputBuffer = f_setApiOutput("Cp",valueCp);
-	realloc(strOutputBuffer,new_length(strOutputBuffer));
-	strcat(strOutputText,strOutputBuffer);
-	realloc(strOutputBuffer,BUFF_SIZE);
-	// Connector
-	strcat(strOutputText,"&");
-	// Value Mr
-	strOutputBuffer = f_setApiOutput("Mr",valueMr);
-	realloc(strOutputBuffer,new_length(strOutputBuffer));
-	strcat(strOutputText,strOutputBuffer);
-	realloc(strOutputBuffer,BUFF_SIZE);
-	*/
-	
-	// concatenateStrings(arrayOutput, 4, strOutputText);
-	// Print the concatenated string
-    // for (int i = 0; result[i] != '\0'; i++) {
-        // putchar(result[i]);
-    
+	sprintf(strOutputText,"SET(Wb2;Cac;%d)&SET(Wb2;Vc;%d)&SET(Wb2;Cp;%f)&SET(Wb2;Mr;%f)",AValueCac,AValueVc,AValueCp,AValueMr);
+	if(DEBUG_OUTPUT)
+	{
+		printf("API-Output Command: %s",strOutputText);
+	}
 	setoutputtext(0,strOutputText);
-	// addString(arrayOutput,0,"                                                                                             ");
-	// addString(arrayOutput,1,"                                                                                             ");
-	// addString(arrayOutput,2,"                                                                                             ");
-	// addString(arrayOutput,3,"                                                                                             ");
-	// free(arrayOutput);
-	// char *arrayOutput[4] = {
-// };
 	free(strOutputText);
-	free(strOutputBuffer);
-}
-
-void f_setApiOutput(char *str,float flValue, char *Out)
-{
-	// Set API-Connector Command to FunctionBlock Input with Float Parameter
-	static char f_apiBuffer[BUFF_SIZE];
-	sprintf(f_apiBuffer,"SET(Wb2;%s;%f)",str,flValue);
-	if(DEBUG_OUTPUT)
-	{
-		printf("API-Output Command: %s",f_apiBuffer);
-	}
-	// setoutputtext(0,f_apiBuffer);
-	// addString(arrayOutput,index,f_apiBuffer);
-	// free(f_apiBuffer);
-	Out = f_apiBuffer;
-}
-
-void i_setApiOutput(char *str,int iValue, char *Out)
-{
-	// Set API-Connector Command to FunctionBlock Input with Integer Parameter
-	static char i_apiBuffer[BUFF_SIZE];
-	sprintf(i_apiBuffer,"SET(Wb2;%s;%d)",str,iValue);
-	if(DEBUG_OUTPUT)
-	{
-		printf("API-Output Command: %s",i_apiBuffer);
-	}
-	// setoutputtext(0,i_apiBuffer);
-	// addString(arrayOutput,index,i_apiBuffer);
-	// free(i_apiBuffer);
-	Out = i_apiBuffer;
-}
-
-void b_setApiOutput(char *str,int iValue, char *Out)
-{
-	// Set API-Connector Command to FunctionBlock Input with Integer Parameter
-	static char b_apiBuffer[BUFF_SIZE];
-	if (iValue == 0)
-		{
-			sprintf(b_apiBuffer,"SET(Wb2;%s;Aus)",str);
-		} else {
-			sprintf(b_apiBuffer,"SET(Wb2;%s;Aus)",str);
-		}
-	if(DEBUG_OUTPUT)
-	{
-		printf("API-Output Command: %s",b_apiBuffer);
-	}
-	// setoutputtext(0,b_apiBuffer);
-	// free(b_apiBuffer);
-	Out = b_apiBuffer;
 }
 
 void getApiOutput(char *strOutput)
@@ -323,13 +235,13 @@ Calculating unser Current
 	char currUserBuffer[BUFF_SIZE];
 	if (valueCa == 1) {
 		pushUserCurrLast = pushUserCurr;
-		// switch to three phases if i is over POWER_TH and Cooldown Time in 0
-		if (i <= POWER_TH) {
+		// switch to three phases if i is over POWER_TH_ON and Cooldown Time in 0
+		if (i <= POWER_TH_ON) {
 			if (calcCooldownTime(iTimePhaseSwitch) == 0) {
 				sendBuffer("x2 1");
 				iTimePhaseSwitch = getcurrenttime();
 			}
-		} else {
+		} else if (i >= POWER_TH_OFF)) {
 			if (calcCooldownTime(iTimePhaseSwitch) == 0) {
 				sendBuffer("x2 0");
 				iTimePhaseSwitch = getcurrenttime();
@@ -377,11 +289,12 @@ while(COM_ACTIVE)
 	setUserCurrent(valueTp);
 	setSetEnergy(pushSetEnergy);
 	char szBuffer[BUFF_SIZE];
-	if ((getcurrenttime()- iTimeReport2) > 5)
+	if ((getcurrenttime()- iTimeReport2) > UDP_POLL)
 	{
 		iTimeReport2 = getcurrenttime();
 		sendBuffer("report 2");
-	} else if ((getcurrenttime()- iTimeReport3) > 5) {
+	} 
+	if ((getcurrenttime()- iTimeReport3) > UDP_POLL) {
 		iTimeReport3 = getcurrenttime();
 		sendBuffer("report 3");
 	}
@@ -420,7 +333,7 @@ while(COM_ACTIVE)
 				if(valuePhaseSwitchLast != valuePhaseSwitch) {
 					iTimePhaseSwitch = getcurrenttime();
 				}
-				if(valuePhaseSwitchSrc != 4) { // Switch Source if its not UDP
+				if(valuePhaseSwitchSrc != 4) { // Switch Source if it is not UDP
 					pushPhaseSwitchSrc = 1;
 				} else {
 					pushPhaseSwitchSrc = 0;
@@ -450,16 +363,13 @@ while(COM_ACTIVE)
 		}
 	}
 	// Write API-Outputs
-	// i_setApiOutput("Cac",valueCac,0);
-	// i_setApiOutput("Vc",valueVc,1);
-	// f_setApiOutput("Cp",valueCp,2);
-	// f_setApiOutput("Mr",valueMr,3);
-	flushApiOutput();
+	flushApiOutput(valueCac,valueVc,valueCp,valueMr);
 	// Write OutputValues
 	setoutput(0,valueSetEnergy); // O1	- SetEnergy Value in kWh
 	setoutput(1,valuePhaseSwitch); // O2	- PhaseSwitch State
 	setoutput(2,valuePhaseSwitchSrc); // O3	- PhaseSwitch Source
 	setoutput(3,calcCooldownTime(iTimePhaseSwitch)); // O4	- Cooldown Time to next switch
+	setoutput(4,COOLDOWN); // O5 - Cooldown Time Constant
 	// Free buffer
 	free(szBuffer);
 }
