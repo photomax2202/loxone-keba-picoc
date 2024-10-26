@@ -1,7 +1,5 @@
 /*
 Integration Keba P30 Wallbox über UDP Kommunikation
-Senden der API Output Signale als kombinierter String
-
 Signal Source > get value from UDP-Report > send to API-Connector
 Vc	- report 2 > Plug >= 5
 Cp	- report 3 > P
@@ -14,17 +12,18 @@ I12	- Enable Charging
 I13	- Target Power in kW
 Using API-Connector if possible - GETOUTPUT Function not implemented in Loxone API
 T1	- Reserved for API-Input
+
 Output Values
 Txt1	- Output for Wb2 API-Connector
 O1		- SetEnergy Value in kWh
 O2		- PhaseSwitch State
 O3		- PhaseSwitch Source
 O4		- Cooldown Time to next switch
-O5		- Cooldown Time Constants
 
 Function:
 	Polling "report 2" & "report 3" every 5s with 1s offset between reports.
 	Setup with UDP_POLL
+
 
 Knowing Issues:
 -	Vc Signal is pushed to API-Connector but Wb2 FB does not process correctly
@@ -103,6 +102,7 @@ iTimeReport2 = getcurrenttime();
 iTimeReport3 = getcurrenttime() + 1;
 iTimePhaseSwitch = getcurrenttime() - 250;
 cCnt = 0;
+
 void sendBuffer(char *str) {
 	stream_write(udpStream,str,strlen(str)); // write to output buffer
 	stream_flush(udpStream); // flush output buffer
@@ -163,26 +163,48 @@ int i_extractValueFromReport(char *str,char *strfind)
 	return (int)f_extractValueFromReport(str,strfind);
 }
 
-void flushApiOutput(int AValueCac, int AValueVc, float AValueCp, float AValueMr)
+void f_setApiOutput(char *str,float flValue)
 {
-	char strOutputText[BUFF_SIZE];
-	
-	sprintf(strOutputText,"SET(Wb2;Cac;%d)&SET(Wb2;Vc;%d)&SET(Wb2;Cp;%f)&SET(Wb2;Mr;%f)",AValueCac,AValueVc,AValueCp,AValueMr);
+	// Set API-Connector Command to FunctionBlock Input with Float Parameter
+	static char f_apiBuffer[BUFF_SIZE];
+	sprintf(f_apiBuffer,"SET(Wb2;%s;%f)",str,flValue);
 	if(DEBUG_OUTPUT)
 	{
-		printf("API-Output Command: %s",strOutputText);
+		printf("API-Output Command: %s",f_apiBuffer);
 	}
-	// every 10th cycle is empty
-	if (cCnt < 1) {
-		setoutputtext(0,"");
-	} else {
-	setoutputtext(0,strOutputText);
+	setoutputtext(0,f_apiBuffer);
+	free(f_apiBuffer);
+}
+
+void i_setApiOutput(char *str,int iValue, char *Out)
+{
+	// Set API-Connector Command to FunctionBlock Input with Integer Parameter
+	static char i_apiBuffer[BUFF_SIZE];
+	sprintf(i_apiBuffer,"SET(Wb2;%s;%d)",str,iValue);
+	if(DEBUG_OUTPUT)
+	{
+		printf("API-Output Command: %s",i_apiBuffer);
 	}
-	if (cCnt > 10) {
-		cCnt = 0;
+	setoutputtext(0,i_apiBuffer);
+	free(i_apiBuffer);
+}
+
+void b_setApiOutput(char *str,int iValue, char *Out)
+{
+	// Set API-Connector Command to FunctionBlock Input with Integer Parameter
+	static char b_apiBuffer[BUFF_SIZE];
+	if (iValue == 0)
+		{
+			sprintf(b_apiBuffer,"SET(Wb2;%s;Aus)",str);
+		} else {
+			sprintf(b_apiBuffer,"SET(Wb2;%s;Aus)",str);
+		}
+	if(DEBUG_OUTPUT)
+	{
+		printf("API-Output Command: %s",b_apiBuffer);
 	}
-	cCnt = cCnt + 1;
-	free(strOutputText);
+	setoutputtext(0,b_apiBuffer);
+	free(b_apiBuffer);
 }
 
 void getApiOutput(char *strOutput)
@@ -292,26 +314,23 @@ while(COM_ACTIVE)
 		sendBuffer("x2src 4"); 
 	}
 	// getApiOutput("Mr");
-	getInputValues(1); //Read input values to global variabels
-	setEnableCharging(valueCa); //set ena0 Signal, reset phaseSwitch signal
-	setUserCurrent(valueTp); //set userCurrent with phaseSwitch signal on thereshold level - - push value if changed
-	setSetEnergy(pushSetEnergy); //control setEnergy value - push value if changed
-	//polling report messages
+	getInputValues(1);
+	setEnableCharging(valueCa);
+	setUserCurrent(valueTp);
+	setSetEnergy(pushSetEnergy);
 	char szBuffer[BUFF_SIZE];
 	if ((getcurrenttime()- iTimeReport2) > UDP_POLL)
 	{
 		iTimeReport2 = getcurrenttime();
 		sendBuffer("report 2");
-	} 
+	}
 	if ((getcurrenttime()- iTimeReport3) > UDP_POLL) {
 		iTimeReport3 = getcurrenttime();
 		sendBuffer("report 3");
 	}
-	//flush buffer memory
 	szBuffer = "";
-	//read udp stream content
 	nCnt = stream_read(udpStream,szBuffer,BUFF_SIZE,UDP_PAUSE); // read stream to buffer
-	sleep(UDP_PAUSE); // sleep time 
+	sleep(UDP_PAUSE);
 	if(nCnt > 0) //check received bytes
 	{
 		if(DEBUG_OUTPUT)
@@ -319,7 +338,7 @@ while(COM_ACTIVE)
 			printf("Buffer received: \n%s",szBuffer);	
 		}
 		reportId = i_extractValueFromReport(szBuffer,"\"ID\": \"");
-		if(reportId == 2) //read report 2
+		if(reportId == 2)
 		{
 			deviceSerial = i_extractValueFromReport(szBuffer,"\"Serial\": \"");
 			if (deviceSerial == SERIAL_NO)
@@ -351,8 +370,7 @@ while(COM_ACTIVE)
 				}
 			}
 		}
-		if(reportId == 3) //read report 2
-		{
+		if(reportId == 3){
 			deviceSerial = i_extractValueFromReport(szBuffer,"\"Serial\": \"");
 			if (deviceSerial == SERIAL_NO)
 			{
@@ -375,13 +393,24 @@ while(COM_ACTIVE)
 		}
 	}
 	// Write API-Outputs
-	flushApiOutput(valueCac,valueVc,valueCp,valueMr);
+	// every 10th cycle is empty
+	if (cCnt < 1) {
+		setoutputtext(0,"");
+	} else {								   
+	i_setApiOutput("Cac",valueCac,0);
+	i_setApiOutput("Vc",valueVc,1);
+	f_setApiOutput("Cp",valueCp,2);
+	f_setApiOutput("Mr",valueMr,3);
+	}
+	if (cCnt > 10) {
+		cCnt = 0;							   
+	}
+	cCnt = cCnt + 1;
 	// Write OutputValues
 	setoutput(0,valueSetEnergy); // O1	- SetEnergy Value in kWh
 	setoutput(1,valuePhaseSwitch); // O2	- PhaseSwitch State
 	setoutput(2,valuePhaseSwitchSrc); // O3	- PhaseSwitch Source
 	setoutput(3,calcCooldownTime(iTimePhaseSwitch)); // O4	- Cooldown Time to next switch
-	setoutput(4,COOLDOWN); // O5 - Cooldown Time Constant
 	// Free buffer
 	free(szBuffer);
 }
