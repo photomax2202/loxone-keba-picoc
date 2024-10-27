@@ -1,6 +1,24 @@
 # loxone-keba-picoc
 PicoC Script for Communicating with Loxone Wallbox Functionblock via UDP 
 
+## References
+Keba Download Section
+https://www.keba.com/de/emobility/service-support/downloads/downloads
+- UDP Programmers guide
+
+Loxone Documentation
+https://www.loxone.com/dede/kb/api-ports-domains/
+- API Connector
+
+## Knowing Issues
+- Keba phase Switch needs 5 minutes cooldown time
+- Loxone API Commands with type Number or Boolenan will not accepted by Function Block connector. Walkarround: Connect unused "Merker" with type of Input Connector.
+- Loxone API Command can not get Values from Function Block. They need a direct Connection to Program Block input.
+
+## Example Screenshot
+<img src="Screenshot_Loxone Config.jpg" width="800"/>
+External Status Block is for Logging Commands by Tracker object.
+
 ## Compiler Options/Macros
 See Compiler Option Switches for your own Configuration.
 
