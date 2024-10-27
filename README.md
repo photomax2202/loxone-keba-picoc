@@ -14,9 +14,10 @@ https://www.loxone.com/dede/kb/api-ports-domains/
 - Set up Function Blocks like shown in Screenshot.
 - Programblock and Wallbox 2 Block nessecary
 - copy sourcecode (e.g. "keba_flush.c") to ProgramBlock sourcecode
-- Edit Compiler Makros
+- edit Compiler Makros
     - SERIAL_NO > Serial no of own wallbox
     - STREAM_ADRESS > set up own ip adress in adress
+- add unused "Merker" > see Knowing Issues 
 
 ## Knowing Issues
 - Keba phase Switch needs 5 minutes cooldown time
