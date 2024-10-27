@@ -10,6 +10,14 @@ Loxone Documentation
 https://www.loxone.com/dede/kb/api-ports-domains/
 - API Connector
 
+## Usage
+- Set up Function Blocks like shown in Screenshot.
+- Programblock and Wallbox 2 Block nessecary
+- copy sourcecode (e.g. "keba_flush.c") to ProgramBlock sourcecode
+- Edit Compiler Makros
+    - SERIAL_NO > Serial no of own wallbox
+    - STREAM_ADRESS > set up own ip adress in adress
+
 ## Knowing Issues
 - Keba phase Switch needs 5 minutes cooldown time
 - Loxone API Commands with type Number or Boolenan will not accepted by Function Block connector. Walkarround: Connect unused "Merker" with type of Input Connector.
