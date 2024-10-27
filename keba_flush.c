@@ -224,8 +224,10 @@ void setEnableCharging(int i) {
 	char enaBuffer[BUFF_SIZE];
 	sprintf(enaBuffer,"ena %d",i);
 	if((i == 0) && (valuePhaseSwitch == 1) && (calcCooldownTime(iTimePhaseSwitch) == 0)) {
+		printf("Reset phaseSwitch to LOW")
 		sendBuffer("x2 0");
 		iTimePhaseSwitch = getcurrenttime();
+		sleep(1000);
 		sendBuffer(enaBuffer);
 	}
 	if(valueCaLast != valueCa)
