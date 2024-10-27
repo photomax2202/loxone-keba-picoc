@@ -17,6 +17,8 @@ https://www.loxone.com/dede/kb/api-ports-domains/
 - edit Compiler Makros
     - SERIAL_NO > Serial no of own wallbox
     - STREAM_ADRESS > set up own ip adress in adress
+    - MULTI_CONTROL > false > charging will stopped if Ca-Signal is low
+    - COM_ACTIVE > true > activate the main loop (Line 290 ff.)
 - add unused "Merker" > see Knowing Issues 
 
 ## Knowing Issues
