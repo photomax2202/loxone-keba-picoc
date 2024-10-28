@@ -1,4 +1,5 @@
 /*
+
 Integration Keba P30 Wallbox über UDP Kommunikation
 Signal Source > get value from UDP-Report > send to API-Connector
 Vc	- report 2 > Plug >= 5
