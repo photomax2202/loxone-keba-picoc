@@ -6,11 +6,6 @@ on:
       - main
     paths:
       - '**/*.c'
-  pull_request:
-    branches:
-      - main
-    paths:
-      - '**/*.c'
 
 jobs:
   build:
@@ -20,14 +15,21 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Find changed files
-      id: files
+    - name: List changed .c files
+      id: list-files
+      uses: mirko-felice/list-files-action@v1
+      with:
+        extension: 'c'
+        fetch-depth: 2
+
+    - name: Check for changed files
+      if: steps.list-files.outputs.files == ''
       run: |
-        echo "Geänderte Dateien:"
-        git diff --name-only HEAD^ HEAD | grep '\.c$' || echo "Keine geänderten .c-Dateien gefunden"
-        echo "::set-output name=files::$(git diff --name-only HEAD^ HEAD | grep '\.c$')"
+        echo "Keine geänderten .c-Dateien gefunden. Abbruch."
+        exit 1
 
     - name: Install dependencies
+      if: steps.list-files.outputs.files != ''
       run: |
         sudo apt-get update
         sudo apt-get install -y gcc make
@@ -36,9 +38,9 @@ jobs:
         make
 
     - name: Compile with PicoC
+      if: steps.list-files.outputs.files != ''
       run: |
         cd picoc
-        for file in ${{ steps.files.outputs.files }}; do
+        for file in ${{ steps.list-files.outputs.files }}; do
           ./picoc ../$file
         done
-
