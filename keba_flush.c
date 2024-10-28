@@ -56,7 +56,6 @@ Knowing Issues:
 int nCnt;
 int cCnt;
 int nEvents;
-int devideFound;
 // API Out Variables
 int valueVc;
 float valueCp;
