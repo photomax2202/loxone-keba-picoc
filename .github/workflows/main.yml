@@ -28,7 +28,14 @@ jobs:
         cd picoc
         make
 
+    - name: Find changed files
+      id: files
+      run: |
+        echo "::set-output name=files::$(git diff --name-only HEAD^ HEAD | grep '\.c$')"
+
     - name: Compile with PicoC
       run: |
         cd picoc
-        ./picoc ../main.c
+        for file in ${{ steps.files.outputs.files }}; do
+          ./picoc ../$file
+        done
