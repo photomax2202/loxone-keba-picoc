@@ -17,10 +17,10 @@ jobs:
 
     - name: List changed .c files
       id: list-files
-      uses: mirko-felice/list-files-action@v1
-      with:
-        extension: 'c'
-        fetch-depth: 2
+      run: |
+        CHANGED_FILES=$(git diff --name-only HEAD^ HEAD | grep '\.c$' || true)
+        echo "Geänderte Dateien: $CHANGED_FILES"
+        echo "::set-output name=files::$CHANGED_FILES"
 
     - name: Check for changed files
       if: steps.list-files.outputs.files == ''
