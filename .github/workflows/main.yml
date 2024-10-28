@@ -20,16 +20,16 @@ jobs:
       run: |
         CHANGED_FILES=$(git diff --name-only HEAD^ HEAD | grep '\.c$' || true)
         echo "Geänderte Dateien: $CHANGED_FILES"
-        echo "::set-output name=files::$CHANGED_FILES"
+        echo "$CHANGED_FILES" > changed_files.txt
 
     - name: Check for changed files
-      if: steps.list-files.outputs.files == ''
       run: |
-        echo "Keine geänderten .c-Dateien gefunden. Abbruch."
-        exit 1
+        if [ ! -s changed_files.txt ]; then
+          echo "Keine geänderten .c-Dateien gefunden. Abbruch."
+          exit 1
+        fi
 
     - name: Install dependencies
-      if: steps.list-files.outputs.files != ''
       run: |
         sudo apt-get update
         sudo apt-get install -y gcc make
@@ -38,9 +38,8 @@ jobs:
         make
 
     - name: Compile with PicoC
-      if: steps.list-files.outputs.files != ''
       run: |
         cd picoc
-        for file in ${{ steps.list-files.outputs.files }}; do
+        for file in $(cat ../changed_files.txt); do
           ./picoc ../$file
         done
