@@ -1,45 +1,23 @@
-name: PicoC-Compiler-Check
+name: C/C++ CI
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - '**/*.c'
+    branches: [ $default-branch ]
+  pull_request:
+    branches: [ $default-branch ]
 
 jobs:
   build:
+
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-
-    - name: List changed .c files
-      id: list-files
-      run: |
-        CHANGED_FILES=$(git diff --name-only HEAD^ HEAD | grep '\.c$' || true)
-        echo "Geänderte Dateien: $CHANGED_FILES"
-        echo "$CHANGED_FILES" > changed_files.txt
-
-    - name: Check for changed files
-      run: |
-        if [ ! -s changed_files.txt ]; then
-          echo "Keine geänderten .c-Dateien gefunden. Abbruch."
-          exit 1
-        fi
-
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc make
-        git clone https://github.com/jpoirier/picoc.git
-        cd picoc
-        make
-
-    - name: Compile with PicoC
-      run: |
-        cd picoc
-        for file in $(cat ../changed_files.txt); do
-          ./picoc ../$file
-        done
+    - uses: actions/checkout@v4
+    - name: configure
+      run: ./configure
+    - name: make
+      run: make
+    - name: make check
+      run: make check
+    - name: make distcheck
+      run: make distcheck
