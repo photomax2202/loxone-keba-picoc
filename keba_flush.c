@@ -1,6 +1,6 @@
 /*
 Integration Keba P30 Wallbox über UDP Kommunikation
-Senden der API Output Signale als kombinierter String
+Senden der API Output Signale als kombinierter String.
 
 Signal Source > get value from UDP-Report > send to API-Connector
 Vc	- report 2 > Plug >= 5
