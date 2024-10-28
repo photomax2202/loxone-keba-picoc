@@ -52,7 +52,7 @@ Knowing Issues:
 #define COM_ACTIVE true // Programm active 
 
 // define global variabels
-int nCnt
+int nCnt;
 int cCnt;
 int nEvents;
 // API Out Variables
