@@ -20,6 +20,13 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
+    - name: Find changed files
+      id: files
+      run: |
+        echo "Geänderte Dateien:"
+        git diff --name-only HEAD^ HEAD | grep '\.c$' || echo "Keine geänderten .c-Dateien gefunden"
+        echo "::set-output name=files::$(git diff --name-only HEAD^ HEAD | grep '\.c$')"
+
     - name: Install dependencies
       run: |
         sudo apt-get update
@@ -28,14 +35,10 @@ jobs:
         cd picoc
         make
 
-    - name: Find changed files
-      id: files
-      run: |
-        echo "::set-output name=files::$(git diff --name-only HEAD^ HEAD | grep '\.c$')"
-
     - name: Compile with PicoC
       run: |
         cd picoc
         for file in ${{ steps.files.outputs.files }}; do
           ./picoc ../$file
         done
+
