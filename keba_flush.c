@@ -104,7 +104,7 @@ pushPhaseSwitchSrc = 0;
 pushSetEnergy = 99;	// Initial Value for pushing new value
 iTimeReport2 = getcurrenttime();
 iTimeReport3 = getcurrenttime() + 1;
-iTimePhaseSwitch = getcurrenttime() - 250;
+iTimePhaseSwitch = getcurrenttime() - COOLDOWN + 30;
 cCnt = 0;
 void sendBuffer(char *str) {
 	stream_write(udpStream,str,strlen(str)); // write to output buffer
