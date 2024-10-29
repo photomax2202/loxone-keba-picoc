@@ -33,10 +33,12 @@ Knowing Issues:
 */
 // server-address und port bitte anpassen
 // define Constants
-#define SERIAL_NO 21464391
-#define STREAM_ADRESS "/dev/udp/192.168.98.28/7090"
+// #define SERIAL_NO 21464391
+// #define STREAM_ADRESS "/dev/udp/192.168.98.28/7090"
 // #define SERIAL_NO 20420166
 // #define STREAM_ADRESS "/dev/udp/192.168.98.29/7090"
+#define SERIAL_NO 22618526
+#define STREAM_ADRESS "/dev/udp/192.168.178.39/7090"
 #define BUFF_SIZE 512
 #define UDP_PAUSE 100 //Sleep time between cycles
 #define POWER_TH_ON 4200 //Power Thereshold Phase switch ON in W
@@ -48,7 +50,8 @@ Knowing Issues:
 #define CONV_CURRENT 1000 // Constant for Convert Current 1000 mA <> A
 #define CONV_PF 10 // Constant for Convert Power Factor 0..1000 <> 0..100%
 #define DEBUG_OUTPUT false
-#define MULTI_CONTROL true // Wallbox can be Controlled by second source
+// #define MULTI_CONTROL true // Wallbox can be Controlled by second source
+#define MULTI_CONTROL false // Wallbox will stop charging if not allowed
 // #define COM_ACTIVE false // Programm not active
 #define COM_ACTIVE true // Programm active 
 
