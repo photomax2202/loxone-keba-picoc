@@ -8,7 +8,7 @@ cCnt = 0;
 
 while(nCnt)
 {
-   printf("Test %s \n", cCnt);
+   printf("Test %d \n", cCnt);
    cCnt = cCnt + 1;
    if (cCnt > 10) 
    {
