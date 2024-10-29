@@ -44,6 +44,6 @@ jobs:
       run: |
         cd picoc
         for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
-          ./picoc ../$file.c
+          ./picoc ../$file
         done
         
