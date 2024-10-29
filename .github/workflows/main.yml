@@ -36,7 +36,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y gcc make
-        git clone https://github.com/jpoirier/picoc.git
+        git clone https://gitlab.com/zsaleeba/picoc.git
         cd picoc
         make
 
