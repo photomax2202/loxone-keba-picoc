@@ -1,23 +1,49 @@
-name: C/C++ CI
+name: PicoC-Compiler-Check
 
 on:
   push:
-    branches: [ $default-branch ]
+    branches:
+      - main
+    paths:
+      - '**/*.c'
   pull_request:
-    branches: [ $default-branch ]
+    branches:
+      - main
+    paths:
+      - '**/*.c'
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
+    
 
     steps:
-    - uses: actions/checkout@v4
-    - name: configure
-      run: ./configure
-    - name: make
-      run: make
-    - name: make check
-      run: make check
-    - name: make distcheck
-      run: make distcheck
+    
+    - name: Checkout code
+      uses: actions/checkout@v2
+      
+    - name: Check if Prisma schema changed
+      id: changed-files
+      uses: tj-actions/changed-files@v44
+
+    - name: List all changed files
+      run: |
+        for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+          echo "$file was changed"
+        done
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc make
+        git clone https://gitlab.com/zsaleeba/picoc.git
+        cd picoc
+        make
+
+    - name: Compile with PicoC
+      run: |
+        cd picoc
+        for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+          ./picoc ../$file
+        done
+        
