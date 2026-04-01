@@ -29,7 +29,6 @@ Output:
 11 - 
 12 - 
 13 - 
-
 */
 
 #define ACTIVE					(1)
@@ -47,9 +46,9 @@ int SERIALNO		= 20420166;
 int gl_nEvents;
 int gl_iBreakLoop = 0;
 int gl_iInitialLoop = 1;
-int gl_iTargetPowerIsChanging;
+int gl_iPollStates = 0;
 int gl_iChargingAllowedIsChanging;
-int gl_iPhaseSwitchIsChanging;
+int gl_iTargetPowerIsChanging;
 
 int gl_iX2PhaseSwitch;
 
@@ -75,7 +74,7 @@ unsigned int getCountdown(unsigned int startTime, unsigned int durationSec) {
     return durationSec - elapsed;
 }
 
-void SendCommand(char *ACommand) {
+void SendCommand(char *ACommand, int APollStates) {
 	char LStreamname[100];
 	int LWrittenBytes, i;
 	
@@ -105,6 +104,7 @@ void SendCommand(char *ACommand) {
 	}
 	
 	stream_close(UDP_STREAM);
+	gl_iPollStates = APollStates;
 }
 
 // Has ChangedValue
@@ -172,34 +172,64 @@ int getThreePhaseCharging() {
 	float LCurrent2 = getinput(9);
 	float LCurrent3 = getinput(10);
 	int LPhaseSwitch = getX2PhaseSwitch();
-	if ((LPhaseSwitch == 1) && (LCurrent1 >= 1 && LCurrent2 >= 1 && LCurrent3 >= 1)) {
+	if ((LPhaseSwitch == 1) && (LCurrent1 > 0 && LCurrent2 > 0 && LCurrent3 > 0)) {
 		LThreePhase = 1;
 	}
 	return LThreePhase;
 }
 
 int getCurrHw() {
-	char LInputBuffer[10];
-	LInputBuffer = getinputtext(1);
+	char *LInputBuffer = getinputtext(1);
 	int LCurrHw = batoi(LInputBuffer);
 	return LCurrHw;
 }
 
 int getCurrUser() {
-	char LInputBuffer[10];
-	LInputBuffer = getinputtext(2);
+	char *LInputBuffer = getinputtext(2);
 	int LCurrUser = batoi(LInputBuffer);
 	return LCurrUser;
 }
 
+int getChargingAllowed() {
+	return (int)getinput(11);
+}
+
+float getTargetPower() {
+	return getinput(12)*1000; // Return TargetPower in W
+}
+
 // Set Output Values
 
-void setOutputVehicleConnected(int AVehicleConnectes) {
-	setoutput(0,AVehicleConnectes);
+void setOutputVehicleConnected(int AVehicleConnected) {
+	int LVehicleConnected = 1;
+	if (AVehicleConnected == 0) {
+		LVehicleConnected = 0;
+	} 
+	setoutput(0,LVehicleConnected);
 }
 
 void setOutputChargingActive(int AChargingActive) {
-	setoutput(1,AChargingActive);
+	int LChargingActive = 1;
+	if (AChargingActive == 0) {
+		LChargingActive = 0;
+	} 
+	setoutput(1,LChargingActive);
+}
+
+void setEnableSys(int AEnableSys) {
+	char LOutputBuffer[10];
+	int LEnableSys = 1;
+	if (AEnableSys == 0) {
+		LEnableSys = 0;
+	}
+	sprintf(LOutputBuffer,"ena %d",LEnableSys);
+	SendCommand(LOutputBuffer,1);
+}
+
+void setCurrUser(int ACurrUser) {
+	char LOutputBuffer[10];
+	sprintf(LOutputBuffer,"curr %d",ACurrUser);
+	SendCommand(LOutputBuffer,1);
 }
 
 void setX2PhaseSwitch(int APhaseSwitch) {
@@ -208,51 +238,81 @@ void setX2PhaseSwitch(int APhaseSwitch) {
 		return;
 	char LOutputBuffer[10];
 	sprintf(LOutputBuffer,"X2 %d",gl_iX2PhaseSwitch);
-	SendCommand(LOutputBuffer);
+	SendCommand(LOutputBuffer,1);
+}
+
+void storePhaseSwitchTime() {
+	gl_uiPhaseSwitchTime = getcurrenttime();
+}
+
+int calculateCurrUser() {
+	float LCurrUser;
+	if (getThreePhaseCharging() == 1) {
+		LCurrUser = getTargetPower()/(getVoltagePhaseSum()*sqrt(3));
+	} else {
+		LCurrUser = getTargetPower()/getVoltagePhaseOne();
+	}
+	LCurrUser = LCurrUser * 1000; // converting A in mA
+	// test min and max value
+	if (LCurrUser < 6000)
+        LCurrUser = 6000;
+    else if (LCurrUser > getCurrHw())
+        LCurrUser = getCurrHw();
+	return (int) LCurrUser;
 }
 
 // Main Application
 void MainApplication() {
-	if (getCountdown(gl_uiReportTime,UDP_POLL) == 0) {
-		SendCommand("report 2");
-		SendCommand("report 3");
+	if ((getCountdown(gl_uiReportTime,UDP_POLL) == 0) || gl_iPollStates) {
+		SendCommand("report 2",0);
+		SendCommand("report 3",0);
 		gl_uiReportTime = getcurrenttime();
 	}
 	// Plug or State Changed
-	if (gl_nEvents & 0x6) {
-		printf("Evaluate States");
+	if (gl_nEvents & 0x30) {
 		setOutputVehicleConnected(getVehicleConnected());
 		setOutputChargingActive(getChargingActive());
 	}
 	// ChargingAllowed Changed
-	if ((gl_nEvents & 0x800) || gl_iChargingAllowedIsChanging) {
-		gl_iChargingAllowedIsChanging = 1; 
-		gl_iChargingAllowedIsChanging = 0; 
+	if ((gl_nEvents & 0x4000) || gl_iChargingAllowedIsChanging) {
+		gl_iChargingAllowedIsChanging = 1;
+		if (getChargingAllowed() == getEnableSys()) {
+			gl_iChargingAllowedIsChanging = 0; 
+		} else {
+			setEnableSys(getChargingAllowed());
+		}
 	}
 	// TargetPower Changed
-	if ((gl_nEvents & 0x1000) || gl_iTargetPowerIsChanging) {
+	if ((gl_nEvents & 0x8000) || gl_iTargetPowerIsChanging) {
 		 gl_iTargetPowerIsChanging = 1;
-		 gl_iTargetPowerIsChanging = 0;
+		 int iNewCurrUser = calculateCurrUser();
+		 if (iNewCurrUser == getCurrUser()) {
+			gl_iTargetPowerIsChanging = 0; 
+		 } else {
+			setCurrUser(iNewCurrUser); 
+		 } 
 	}
 	// X2 phase Switch Changed
-	if ((gl_nEvents & 0x10) || gl_iPhaseSwitchIsChanging) {
-		 gl_iPhaseSwitchIsChanging = 1;
-		 gl_iPhaseSwitchIsChanging = 0;
+	if (gl_nEvents & 0x80) {
+		gl_uiPhaseSwitchTime = getcurrenttime(); 
 	}
 }
 
 while(ACTIVE) {
 unsigned int uiProgrammTime = getcurrenttime();
-	gl_nEvents = getinputevent();
+	if (gl_iBreakLoop == 0) {
+		gl_nEvents = getinputevent();
+		gl_iBreakLoop = 0;
+	}
 	if (gl_iInitialLoop) {
 		gl_nEvents = 0x1fff;
 		gl_iInitialLoop = 0;
 	}
-	printf("getinputevent: %d", gl_nEvents);
-	// MainApplication();
+	MainApplication();
 	while ((getCountdown(uiProgrammTime, 1) > 0)) {
 		gl_nEvents = getinputevent();
 		if (gl_nEvents & 0x1fff) {
+			gl_iBreakLoop = 1;
 			break; 
 		}
 		sleep(50);
